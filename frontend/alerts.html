@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Email Alerts & SOS — Landslide Guardian</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">⛰️ Landslide Guardian</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="assessment.html">Risk Assessment</a></li>
+      <li><a href="map.html">Risk Map</a></li>
+      <li><a href="alerts.html" class="active">Alerts & SOS</a></li>
+      <li><a href="history.html">History</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <div class="section" style="padding-top:0">
+      <span class="section-kicker">Citizen notification</span>
+      <h1 class="section-title">Email SOS & Early Warning</h1>
+      <p class="section-copy">Residents can register an email without creating an account. Administrators can later dispatch an emergency email to matching registered residents.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.75rem">Register for alerts</div>
+        <form id="registerForm">
+          <label class="metric-label" for="regName">Full name
+            <input id="regName" class="form-control" required>
+          </label>
+          <label class="metric-label" for="regEmail" style="margin-top:.75rem">Email address
+            <input id="regEmail" class="form-control" type="email" required placeholder="you@example.com">
+          </label>
+          <label class="metric-label" for="regLocation" style="margin-top:.75rem">Region
+            <select id="regLocation" class="form-control"></select>
+          </label>
+          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem">Register Email</button>
+        </form>
+        <p class="section-copy" style="font-size:.78rem;margin-top:.75rem">After registering, verify your email below. Only <strong>verified</strong> emails receive automatic regional SOS alerts.</p>
+        <div id="regMsg" style="margin-top:.75rem"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Verify your email (OTP)</span>
+          <span class="badge badge-moderate">REQUIRED FOR SOS</span>
+        </div>
+        <p class="section-copy" style="font-size:.84rem">A one-time code is emailed to you. Enter it here to activate emergency alerts for your region.</p>
+        <label class="metric-label">Your email
+          <input id="otpEmail" class="form-control" type="email" placeholder="you@example.com">
+        </label>
+        <button id="sendOtpBtn" class="btn btn-secondary" style="width:100%;margin-top:.75rem">Send verification code</button>
+        <label class="metric-label" style="margin-top:.75rem">Verification code
+          <input id="otpCode" class="form-control" placeholder="6-digit code" maxlength="12">
+        </label>
+        <button id="verifyOtpBtn" class="btn btn-primary" style="width:100%;margin-top:.75rem">Verify email</button>
+        <div id="otpMsg" style="margin-top:.75rem"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1.25rem">
+      <div class="card-header">
+        <span class="card-title">Emergency SOS dispatch</span>
+        <span class="badge badge-critical">ADMIN ONLY</span>
+      </div>
+      <p class="section-copy" style="font-size:.84rem">Manual SOS dispatch is restricted to an authenticated administrator. Residents are notified automatically for HIGH/CRITICAL regions after email verification. Direct administrators to dispatch manually.</p>
+      <a href="admin-login.html" class="btn btn-danger" style="display:inline-block;margin-top:.25rem">🔐 Open Admin Console</a>
+    </div>
+
+    <div class="card" style="margin-top:1.25rem">
+      <div class="card-header">
+        <span class="card-title">Active warnings</span>
+        <span class="badge badge-high" id="activeCountBadge">Loading</span>
+      </div>
+      <div id="alertsFeedContainer"></div>
+    </div>
+  </main>
+
+  <footer></footer>
+  <script src="api.js"></script>
+  <script src="ui.js"></script>
+  <script src="alerts.js"></script>
+</body>
+</html>

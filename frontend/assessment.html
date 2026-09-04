@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Risk Assessment — Landslide Guardian</title><link rel="stylesheet" href="css/style.css"></head>
+<body>
+<nav class="navbar"><a href="index.html" class="nav-brand">⛰️ Landslide Guardian</a><ul class="nav-links">
+<li><a href="index.html">Home</a></li><li><a href="dashboard.html">Dashboard</a></li><li><a href="assessment.html" class="active">Risk Assessment</a></li><li><a href="map.html">Risk Map</a></li><li><a href="alerts.html">Alerts & SOS</a></li><li><a href="history.html">History</a></li></ul></nav>
+
+<main class="container"><div class="section" style="padding-top:0"><span class="section-kicker">Explainable prediction</span><h1 class="section-title">AI Landslide Risk Assessment</h1><p class="section-copy">Run a <strong>Live Now</strong> assessment using real regional weather: live rainfall → estimated pore pressure → region-specific threshold → risk + ML. Tilt is treated as a hardware-only sensor and is never fabricated.</p></div>
+
+<div class="grid-2">
+<div>
+<div class="card"><div class="card-title" style="margin-bottom:.75rem">1. Select region &amp; location</div>
+<div class="chip-container"><button class="chip chip-active" data-region-assam="1">Assam</button><button class="chip" data-region-sikkim="1">Sikkim</button><button class="chip" data-region-meghalaya="1">Meghalaya</button><button class="chip" data-region-mizoram="1">Mizoram</button><button class="chip" data-region-nagaland="1">Nagaland</button><button class="chip" data-region-arunachal="1">Arunachal Pradesh</button><button class="chip" data-region-manipur="1">Manipur</button><button class="chip" data-region-tripura="1">Tripura</button></div>
+<div style="margin-top:1rem" class="chip-container" id="presetChips"></div>
+<div style="margin-top:1.25rem;display:flex;gap:.5rem"><input type="number" id="inputLat" class="form-control" placeholder="Latitude" step=".0001"><input type="number" id="inputLon" class="form-control" placeholder="Longitude" step=".0001"></div>
+<input type="text" id="inputName" class="form-control" placeholder="Location name" style="margin-top:.5rem">
+<div style="display:flex;gap:0.5rem;margin-top:1rem;">
+  <button class="btn btn-primary" style="flex:1;" onclick="runLiveNow()">⚡ Live Now — Real Regional Weather</button>
+  <button class="btn btn-secondary" style="white-space:nowrap;" onclick="useCurrentGpsLocation()" title="Detect current GPS location">📍 Use My Location</button>
+</div>
+<p class="section-copy" style="font-size:.78rem;margin-top:.5rem;color:var(--muted)">Live Now queries Open-Meteo for the coordinate-matched regional profile. Pore pressure is derived via physics equations ($u = γ_w · h_w$), not simulated as rainfall.</p>
+</div>
+
+
+<div class="card" style="margin-top:1.25rem"><div class="card-header"><span class="card-title">2. Future sensor interface — software demo</span><span class="badge badge-moderate">NO HARDWARE · SIMULATION ONLY</span></div>
+<p class="section-copy" style="font-size:.82rem;margin-bottom:1rem">Simulated readings only — <strong>not</strong> the Live Now path. Later, hardware (ESP32 / rain gauge / tilt sensor / piezometer) can populate the same fields via the backend.</p>
+<div class="grid-2">
+<label class="metric-label">Soil moisture %<input id="demoSoil" class="form-control" type="number" min="0" max="100" value="78" step=".1"></label>
+<label class="metric-label">Pore pressure kPa (piezometer)<input id="demoPore" class="form-control" type="number" min="0" max="500" value="8" step=".1"></label>
+<label class="metric-label">Tilt ° — Hardware Sensor Only<input id="demoTilt" class="form-control" type="number" min="0" max="45" value="3.2" step=".1" title="Tilt is a hardware-only sensor; it is never simulated in the Live Now path."></label>
+<label class="metric-label">Rainfall level mm / 24h<input id="demoRain" class="form-control" type="number" min="0" max="1000" value="75" step=".1"></label>
+</div>
+<button class="btn btn-secondary" style="width:100%;margin-top:1rem" onclick="runCustomAssessment(true)">Run Simulation (uses the fields above)</button>
+<button class="btn btn-secondary" style="width:100%;margin-top:.5rem" onclick="resetDemoValues()">Use Automatic Weather + Calculated Pore Pressure</button>
+</div></div>
+
+<div class="card" id="resultContainer"><div class="card-header"><span class="card-title">Assessment Output</span><span class="badge" id="resBadge">Awaiting Input</span></div>
+<div id="resPlaceholder" style="text-align:center;padding:2.5rem 1rem;color:var(--muted)">Choose a region/location and run the prediction.</div>
+<div id="resBody" style="display:none"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem"><h2 id="resLocTitle" style="font-size:1.5rem">—</h2><div id="resScoreText" style="font-size:2.5rem;font-weight:850">0%</div></div>
+<div id="resDataSource" class="metric-source" style="margin-bottom:.75rem">—</div>
+
+<!-- PLAIN-LANGUAGE CITIZEN SAFETY & ACTION BOX -->
+<div id="citizenActionBox" class="card" style="margin-bottom:1rem;border-left:4px solid var(--green);background:rgba(16,185,129,0.06);">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <span class="metric-label" style="font-weight:700;color:var(--text)">🚦 Immediate Citizen Advisory (What to do right now):</span>
+    <button class="chip" onclick="window.print()" style="font-size:0.75rem;cursor:pointer;">📄 Print / Export Advisory</button>
+  </div>
+  <div id="citizenActionText" style="margin-top:.4rem;font-size:.9rem;line-height:1.45;color:var(--text);">
+    Normal conditions. Slopes and hillside transport routes in this corridor are within stable moisture thresholds.
+  </div>
+</div>
+
+<div class="grid-2"><div class="metric-card"><span class="metric-label">ML probability</span><span class="metric-val" id="mlProb">—</span></div><div class="metric-card"><span class="metric-label">Factor of safety</span><span class="metric-val" id="fsVal">—</span></div></div>
+<div class="criteria-grid" id="criteriaGrid" style="margin-top:1rem"></div>
+<div class="card" style="margin-top:1rem;background:rgba(0,0,0,.12)"><div class="metric-label">Recommendation</div><div id="resRecommendation" style="margin-top:.25rem">—</div></div>
+<div id="resPipeline" style="margin-top:.75rem"></div>
+
+<!-- STEP-BY-STEP MATHEMATICAL & PORE PRESSURE BREAKDOWN FOR JUDGES -->
+
+<div class="card" id="calcBreakdownSection" style="margin-top:1.2rem;background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(15,23,42,0.6));border:1px solid rgba(16,185,129,0.3);padding:1.1rem;border-radius:10px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleCalcBreakdown()">
+    <div>
+      <span style="font-size:0.75rem;text-transform:uppercase;color:#10b981;font-weight:700;letter-spacing:0.05em">📐 Physics-Based Geotechnical Engine</span>
+      <h3 style="margin:2px 0 0 0;font-size:1.15rem;color:#f8fafc;display:flex;align-items:center;gap:0.4rem;">
+        Pore Pressure &amp; Risk Formula Breakdown
+      </h3>
+    </div>
+    <span id="calcToggleIcon" style="background:rgba(16,185,129,0.2);color:#10b981;border-radius:6px;padding:3px 9px;font-size:0.85rem;font-weight:700;">▼ View Calculations</span>
+  </div>
+  
+  <div id="calcBreakdownContent" style="margin-top:1rem;">
+    <!-- Filled dynamically by assessment.js -->
+  </div>
+</div>
+
+<div class="factor-list" id="resFactorsList" style="margin-top:1rem"></div>
+<div id="thresholdBox" style="margin-top:1rem"></div>
+<div id="resSosOption" class="sos-box" style="display:none"><button class="btn btn-danger" style="width:100%" onclick="dispatchDirectSOS()">🚨 HIGH/CRITICAL — Notify Admin to Dispatch Regional SOS</button><small style="display:block;color:var(--muted);margin-top:.4rem">Manual dispatch is admin-only. An administrator must be signed in to send the regional email to verified residents.</small></div>
+</div></div></div>
+</main><footer></footer>
+<script src="api.js"></script><script src="ui.js"></script><script src="assessment.js"></script></body></html>

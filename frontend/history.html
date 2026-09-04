@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assessment History — Landslide Guardian</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">⛰️ Landslide Guardian</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="assessment.html">Risk Assessment</a></li>
+      <li><a href="map.html">Risk Map</a></li>
+      <li><a href="alerts.html">Alerts & SOS</a></li>
+      <li><a href="history.html" class="active">History</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <h1 style="font-size: 1.75rem; color: #fff; margin-bottom: 0.5rem;">Historical Risk Logs & Landslide Events</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Live risk evaluations from MongoDB are shown separately from documented historical events.</p>
+
+    <section class="section" style="padding-top:0"><span class="section-kicker">Documented events</span><h2 class="section-title">Real historical landslide references</h2><p class="section-copy">Reference events are separate from the live MongoDB risk-assessment log. Verify official reports before using historical records for operational decisions.</p><div class="grid-3" id="historicalEvents" style="margin-top:1.25rem"></div></section>
+
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <div class="card-title" style="margin-bottom: 1rem;">Stored Live Risk Score Trend</div>
+      <div style="height: 300px;">
+        <canvas id="historyChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom: 0.75rem;">Live Assessment Records from MongoDB</div>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #cbd5e1;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border-color); text-align: left; color: var(--accent-blue);">
+              <th style="padding: 0.5rem;">Date</th>
+              <th style="padding: 0.5rem;">Location</th>
+              <th style="padding: 0.5rem;">Rainfall (24h)</th>
+              <th style="padding: 0.5rem;">Severity</th>
+              <th style="padding: 0.5rem;">Data Type</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+            <!-- Filled by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>Landslide Guardian</p>
+  </footer>
+
+  <script src="api.js"></script>
+  <script src="history-data.js"></script>
+  <script src="ui.js"></script>
+  <script src="history.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+ const box=document.getElementById("historicalEvents");
+ (HISTORICAL_EVENTS||[]).forEach(e=>box.insertAdjacentHTML("beforeend",`<article class="card event-card"><div class="event-img"><img src="${e.image}" alt="${e.title}" loading="lazy"></div><div class="event-body"><div class="event-meta">${e.date}</div><h3>${e.title}</h3><p>${e.summary}</p><div class="event-source">${e.source}</div></div></article>`));
+});
+</script>
+</body>
+</html>

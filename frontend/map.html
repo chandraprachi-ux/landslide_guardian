@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather-Style Interactive Regional Map — Landslide Guardian</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    /* Weather Map Specialized Styling */
+    .map-wrapper {
+      position: relative;
+      width: 100%;
+      height: 720px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.45);
+      border: 1px solid var(--border);
+      background: #06100c;
+    }
+    #fullMap {
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    /* Floating Weather Map Top Controls */
+    .map-top-bar {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
+      pointer-events: none;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .map-top-bar > * {
+      pointer-events: auto;
+    }
+    .map-search-box {
+      position: relative;
+      flex: 1;
+      max-width: 380px;
+      min-width: 260px;
+    }
+    .map-search-input {
+      width: 100%;
+      background: rgba(13, 25, 21, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(67, 209, 122, 0.3);
+      color: #fff;
+      padding: 0.65rem 1rem 0.65rem 2.5rem;
+      border-radius: 30px;
+      font-size: 0.92rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .map-search-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 8px 30px rgba(67, 209, 122, 0.25);
+    }
+    .map-search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .search-results-dropdown {
+      position: absolute;
+      top: 108%;
+      left: 0;
+      right: 0;
+      background: rgba(13, 25, 21, 0.96);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-height: 320px;
+      overflow-y: auto;
+      display: none;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.5);
+      z-index: 1005;
+    }
+    .search-item {
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      transition: background 0.15s ease;
+    }
+    .search-item:hover {
+      background: rgba(67, 209, 122, 0.15);
+    }
+    .search-item strong {
+      color: #fff;
+      font-size: 0.88rem;
+    }
+    .search-item small {
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+    /* Layer Control Switcher */
+    .layer-selector {
+      background: rgba(13, 25, 21, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(67, 209, 122, 0.25);
+      border-radius: 30px;
+      padding: 4px 6px;
+      display: flex;
+      gap: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      align-items: center;
+    }
+    .layer-pill {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .layer-pill.active {
+      background: var(--green);
+      color: #06100c;
+      box-shadow: 0 2px 10px rgba(67, 209, 122, 0.4);
+    }
+    .layer-pill:hover:not(.active) {
+      color: #fff;
+      background: rgba(255,255,255,0.08);
+    }
+    /* Live Now Button */
+    .btn-live-now {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      padding: 0.5rem 1.1rem;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-live-now:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: #fff;
+      border-radius: 50%;
+      animation: pulse-ring 1.6s infinite ease-in-out;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.85); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.5; }
+      100% { transform: scale(0.85); opacity: 1; }
+    }
+    /* Floating Location Card Panel */
+    .location-panel {
+      position: absolute;
+      top: 76px;
+      right: 14px;
+      width: 380px;
+      max-width: calc(100% - 28px);
+      background: rgba(13, 25, 21, 0.94);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      z-index: 1001;
+      padding: 1.15rem;
+      display: none;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      color: var(--text);
+    }
+    .location-panel.active {
+      display: block;
+      animation: slideInRight 0.25s ease-out;
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .location-panel-close {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: rgba(255,255,255,0.08);
+      border: none;
+      color: #94a3b8;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .location-panel-close:hover {
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+    }
+    .panel-header-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+    .panel-header-sub {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.85rem;
+    }
+    .panel-risk-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+    .panel-risk-strip.low { background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; }
+    .panel-risk-strip.moderate { background: rgba(234, 179, 8, 0.16); border: 1px solid rgba(234, 179, 8, 0.35); color: #facc15; }
+    .panel-risk-strip.high { background: rgba(249, 115, 22, 0.16); border: 1px solid rgba(249, 115, 22, 0.35); color: #fb923c; }
+    .panel-risk-strip.critical { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; }
+
+    .panel-metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 1rem;
+    }
+    .panel-metric-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+    }
+    .panel-metric-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 2px;
+    }
+    .panel-metric-val {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .panel-metric-sub {
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+    .panel-why-box {
+      background: rgba(0,0,0,0.25);
+      border-left: 3px solid var(--green);
+      padding: 0.65rem 0.85rem;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 0.85rem;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+    .panel-why-box strong {
+      color: #fff;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .panel-why-box ul {
+      margin-left: 1rem;
+      padding: 0;
+    }
+    .panel-freshness {
+      font-size: 0.7rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 0.6rem;
+    }
+
+    /* Regional Summary Bar */
+    .ner-summary-bar {
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      padding: 0.5rem 0;
+      margin-bottom: 1rem;
+    }
+    .ner-region-chip {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      color: var(--text);
+    }
+    .ner-region-chip:hover {
+      border-color: var(--green);
+      transform: translateY(-2px);
+    }
+    .ner-region-chip.active {
+      border-color: var(--green);
+      background: rgba(67, 209, 122, 0.15);
+      color: #fff;
+    }
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+    .dot-low { background: #10b981; }
+    .dot-moderate { background: #eab308; }
+    .dot-high { background: #f97316; }
+    .dot-critical { background: #ef4444; }
+
+    /* Bottom Map Legend */
+    .map-legend-bar {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      background: rgba(13, 25, 21, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 0.4rem 1rem;
+      z-index: 1000;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 0.78rem;
+      color: #fff;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .zoom-hint {
+      position: absolute;
+      bottom: 14px;
+      right: 14px;
+      background: rgba(13, 25, 21, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.35rem 0.85rem;
+      z-index: 1000;
+      font-size: 0.75rem;
+      color: var(--muted);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">⛰️ Landslide Guardian</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="assessment.html">Risk Assessment</a></li>
+      <li><a href="map.html" class="active">Risk Map</a></li>
+      <li><a href="alerts.html">Alerts & SOS</a></li>
+      <li><a href="history.html">History</a></li>
+    </ul>
+  </nav>
+
+  <main class="container" style="max-width: 1400px; padding: 1.25rem 1rem;">
+    <!-- Title & Stats Strip -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <span class="eyebrow">🌦️ Regional Weather & Landslide Early Warning Map</span>
+        <h1 style="font-size: 1.85rem; color: #fff; margin-top: 2px;">NER Interactive Regional Risk Map</h1>
+        <p style="color: var(--muted); font-size: 0.88rem;">Multi-scale monitoring across all 8 Northeast states · Zoom into any region to reveal sub-locations & geographical risk grid.</p>
+      </div>
+      <div style="display: flex; gap: 0.6rem; align-items: center;">
+        <span class="badge badge-low" id="statMonitoredZones">8 Regions · 32+ Zones</span>
+        <span class="badge badge-critical" id="statHotspotsBadge">0 Emerging Hotspots</span>
+      </div>
+    </div>
+
+    <!-- NER 8 Regions Quick-Bar -->
+    <div class="ner-summary-bar" id="nerRegionsBar">
+      <div class="ner-region-chip active" onclick="zoomToNER()"><span class="status-dot dot-low"></span><strong>NER Overview</strong></div>
+      <div class="ner-region-chip" onclick="zoomToRegion('sikkim')"><span class="status-dot dot-high"></span>Sikkim</div>
+      <div class="ner-region-chip" onclick="zoomToRegion('meghalaya')"><span class="status-dot dot-moderate"></span>Meghalaya</div>
+      <div class="ner-region-chip" onclick="zoomToRegion('mizoram')"><span class="status-dot dot-high"></span>Mizoram</div>
+      <div class="ner-region-chip" onclick="zoomToRegion('nagaland')"><span class="status-dot dot-moderate"></span>Nagaland</div>
+      <div class="ner-region-chip" onclick="zoomToRegion('arunachal_pradesh')"><span class="status-dot dot-moderate"></span>Arunachal Pradesh</div>
+      <div class="ner-region-chip" onclick="zoomToRegion('assam')"><span class="status-dot dot-low"></span>Assam</div>
+      <div class="ner-region-chip" onclick="zoomToRegion('manipur')"><span class="status-dot dot-high"></span>Manipur</div>
+      <div class="ner-region-chip" onclick="zoomToRegion('tripura')"><span class="status-dot dot-low"></span>Tripura</div>
+    </div>
+
+    <!-- Weather-App Style Map Canvas -->
+    <div class="map-wrapper">
+      <!-- Floating Top Controls Bar -->
+      <div class="map-top-bar">
+        <!-- Location Search Bar -->
+        <div class="map-search-box">
+          <span class="map-search-icon">🔍</span>
+          <input type="text" id="mapSearchInput" class="map-search-input" placeholder="Search location (e.g. Rimbi, Gyalshing, Mawlai, Tupul...)" autocomplete="off">
+          <div class="search-results-dropdown" id="searchResultsDropdown"></div>
+        </div>
+
+        <!-- Layer Control Switcher -->
+        <div class="layer-selector">
+          <button class="layer-pill active" data-layer="risk" onclick="switchLayer('risk')">☑ Landslide Risk</button>
+          <button class="layer-pill" data-layer="rainfall" onclick="switchLayer('rainfall')">🌧 Rainfall</button>
+          <button class="layer-pill" data-layer="moisture" onclick="switchLayer('moisture')">💧 Soil Saturation</button>
+          <button class="layer-pill" data-layer="slope" onclick="switchLayer('slope')">📐 Slope</button>
+          <button class="layer-pill" data-layer="history" onclick="switchLayer('history')">📜 Historical</button>
+          <button class="layer-pill" data-layer="sensors" onclick="switchLayer('sensors')">📡 Sensors</button>
+        </div>
+
+        <!-- Live Now Action Button -->
+        <button class="btn-live-now" id="btnLiveNow" onclick="triggerLiveNow()">
+          <span class="pulse-dot"></span> Live Now
+        </button>
+      </div>
+
+      <!-- Leaflet Map Container -->
+      <div id="fullMap"></div>
+
+      <!-- Bottom Map Legend -->
+      <div class="map-legend-bar" id="mapLegendBar">
+        <span style="color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase;">Risk Level:</span>
+        <div class="legend-item"><span class="status-dot dot-low"></span> Low (&lt;31%)</div>
+        <div class="legend-item"><span class="status-dot dot-moderate"></span> Moderate (31-60%)</div>
+        <div class="legend-item"><span class="status-dot dot-high"></span> High (61-80%)</div>
+        <div class="legend-item"><span class="status-dot dot-critical"></span> Critical (&gt;80%)</div>
+      </div>
+
+      <!-- Zoom Level Guide Hint -->
+      <div class="zoom-hint" id="zoomHint">Level 1: NER Overview · Click any region to zoom</div>
+
+      <!-- Weather-App Location Detail Panel -->
+      <div class="location-panel" id="locationPanel">
+        <button class="location-panel-close" onclick="closeLocationPanel()">✕</button>
+        <div class="panel-header-title" id="panelLocName">Rimbi</div>
+        <div class="panel-header-sub" id="panelLocSub">West Sikkim · Lat 27.2025°, Lon 88.2114°</div>
+
+        <div class="panel-risk-strip high" id="panelRiskStrip">
+          <span id="panelRiskLabel">🔴 LANDSLIDE RISK: HIGH</span>
+          <span id="panelRiskScore" style="font-size: 1.25rem;">72%</span>
+        </div>
+
+        <div class="panel-metric-grid">
+          <div class="panel-metric-item">
+            <div class="panel-metric-label">🌧️ 24h Rainfall</div>
+            <div class="panel-metric-val" id="panelRainfall">— mm</div>
+            <div class="panel-metric-sub" id="panelRainStatus">Live Weather API</div>
+          </div>
+          <div class="panel-metric-item">
+            <div class="panel-metric-label">💧 Soil Saturation</div>
+            <div class="panel-metric-val" id="panelSoilMoisture">— %</div>
+            <div class="panel-metric-sub">Pore Head Index</div>
+          </div>
+          <div class="panel-metric-item">
+            <div class="panel-metric-label">📐 Slope Angle</div>
+            <div class="panel-metric-val" id="panelSlope">—°</div>
+            <div class="panel-metric-sub" id="panelElevation">Elevation: — m</div>
+          </div>
+          <div class="panel-metric-item">
+            <div class="panel-metric-label">🌡️ Temperature</div>
+            <div class="panel-metric-val" id="panelTemp">—°C</div>
+            <div class="panel-metric-sub" id="panelHumidity">RH: —%</div>
+          </div>
+          <div class="panel-metric-item">
+            <div class="panel-metric-label">⛰️ Est. Pore Pressure</div>
+            <div class="panel-metric-val" id="panelPorePressure">— kPa</div>
+            <div class="panel-metric-sub" id="panelPoreType">Estimated index</div>
+          </div>
+          <div class="panel-metric-item">
+            <div class="panel-metric-label">🧠 ML Model Prob.</div>
+            <div class="panel-metric-val" id="panelMlProb">—%</div>
+            <div class="panel-metric-sub" id="panelFos">FS: —</div>
+          </div>
+        </div>
+
+        <div class="panel-why-box" id="panelWhyBox">
+          <strong>Why is the risk elevated?</strong>
+          <ul id="panelWhyList">
+            <li>Evaluating local slope geometry and antecedent wetting...</li>
+          </ul>
+        </div>
+
+        <div style="margin-top:0.75rem;padding:0.6rem 0.8rem;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:6px;font-size:0.75rem;">
+          <div style="display:flex;justify-content:space-between;color:#10b981;font-weight:700;">
+            <span>📐 Active Physics Formula</span>
+            <span id="panelFormulaPwp">u = 0.0 kPa</span>
+          </div>
+          <div style="color:#cbd5e1;margin-top:3px;font-family:monospace;" id="panelFormulaText">
+            u = γ_w · h_w | FS = [c' + (σ_n - u)tan(φ')]/τ
+          </div>
+        </div>
+
+        <div class="panel-freshness">
+          <span id="panelFreshness">Updated: Just now</span>
+          <a id="panelAssessLink" href="assessment.html" style="color: var(--green); text-decoration: underline; font-weight: 600;">Full Assessment →</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>Landslide Guardian — Modern Weather-App Style Regional Landslide Early Warning Map</p>
+  </footer>
+
+  <script src="api.js"></script>
+  <script src="ui.js"></script>
+  <script src="map.js"></script>
+</body>
+</html>

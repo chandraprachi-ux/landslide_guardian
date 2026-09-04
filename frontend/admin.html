@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Admin Operations — Landslide Guardian</title><link rel="stylesheet" href="css/style.css"></head>
+<body><nav class="navbar"><a href="admin.html" class="nav-brand">⛰️ Landslide Guardian · Admin</a><span class="api-status-badge" id="adminApi">SECURE CONSOLE</span></nav>
+<main class="container"><div class="section" style="padding-top:0"><span class="section-kicker">Restricted operations</span><h1 class="section-title">Administrator Monitoring Console</h1><p class="section-copy">While this session is active, public pages are locked. Log out before returning to the public website.</p></div>
+<div class="grid-4"><div class="metric-card"><span class="metric-label">Registered users</span><span class="admin-kpi" id="kpiUsers">—</span><span class="metric-source">Email registrations</span></div><div class="metric-card"><span class="metric-label">Stored assessments</span><span class="admin-kpi" id="kpiAssess">—</span><span class="metric-source">Risk history</span></div><div class="metric-card"><span class="metric-label">Active warnings</span><span class="admin-kpi" id="kpiAlerts">—</span><span class="metric-source">High/Critical</span></div><div class="metric-card"><span class="metric-label">Auto-monitor</span><span class="admin-kpi" id="kpiAuto">—</span><span class="metric-source">Background loop</span></div></div>
+<div class="card" style="margin-top:1.25rem"><div class="card-header"><span class="card-title">Automatic monitoring &amp; SOS dispatch</span><button id="runNowBtn" class="chip">▶ Run Now</button></div><div id="monitorStatus" style="margin-top:.5rem"><div class="empty">Loading monitoring state…</div></div></div>
+<div class="grid-2" style="margin-top:1.25rem"><div class="card"><div class="card-header"><span class="card-title">Registered residents</span><button id="refreshAdmin" class="chip">↻ Refresh</button></div><div id="userList"></div></div>
+<div class="card"><div class="card-header"><span class="card-title">Emergency email dispatch</span><span class="badge badge-critical">ADMIN ONLY</span></div><label class="metric-label">Location<select id="dispatchLocation" class="form-control"></select></label><label class="metric-label" style="margin-top:.75rem">Message<textarea id="dispatchMessage" class="form-control" rows="5">Emergency landslide warning from Landslide Guardian. Please move away from vulnerable slopes and follow official safety instructions.</textarea></label><button id="dispatchAdmin" class="btn btn-danger" style="width:100%;margin-top:.75rem">📧 Dispatch Real Email SOS</button><div id="dispatchResult" style="margin-top:.75rem"></div></div></div>
+<div class="card" style="margin-top:1.25rem"><div class="card-header"><span class="card-title">Latest risk assessments</span><button id="logoutAdmin" class="btn btn-danger">Logout & Unlock Public Pages</button></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Time</th><th>Location</th><th>Region</th><th>Risk</th><th>Score</th><th>ML</th><th>FS</th></tr></thead><tbody id="adminTable"></tbody></table></div></div>
+<div class="card" style="margin-top:1.25rem"><div class="card-header"><span class="card-title">Latest alerts</span></div><div id="adminAlerts"></div></div>
+<div class="card" style="margin-top:1.25rem"><div class="card-header"><span class="card-title">Automatic dispatch log</span></div><div id="dispatchLog"></div></div>
+</main><footer></footer><script src="api.js"></script><script src="ui.js"></script>
+<script>
+function populateLocations(){
+ const sel=document.getElementById("dispatchLocation");
+ if(sel&&typeof DEMO_LOCATIONS!=="undefined"){
+  sel.innerHTML=DEMO_LOCATIONS.map(x=>`<option value="${escAdmin(x.name)}">${escAdmin(x.name)}</option>`).join("");
+ }
+}
+async function loadAdmin(){try{
+ const h=API.adminHeaders();const [users,risks,alerts,health,mon]=await Promise.all([API.get("/admin/registered-users",h),API.get("/risk/all"),API.get("/alerts"),API.get("/health"),API.get("/monitor/status")]);
+ kpiUsers.textContent=users.count;kpiAssess.textContent=risks.length;kpiAlerts.textContent=alerts.length;
+ kpiAuto.textContent=mon.enabled?"● ON":(mon.running?"RUNNING":"PAUSED");
+ kpiAuto.style.color=mon.enabled?"var(--green)":"var(--red)";
+ adminApi.textContent=health.database_connected?"API + MONGODB ONLINE":"API ONLINE";
+  renderMonitorStatus(mon);
+  userList.innerHTML=(users.users||[]).length?(users.users||[]).map(u=>`<div class="factor-pill" style="justify-content:space-between"><div><strong>${escAdmin(u.name)}</strong> · ${escAdmin(u.email)}<br><small>Region: ${escAdmin(u.region||u.location||"—")} · ${u.email_verified?'<span style="color:var(--green)">VERIFIED</span>':'<span style="color:var(--red)">UNVERIFIED</span>'}</small></div><button class="chip" onclick="deleteUser('${escAdmin(u.email)}')">✕ Remove</button></div>`).join(""):'<div class="empty">No registered residents yet.</div>';
+  adminTable.innerHTML=risks.slice(0,20).map(r=>`<tr><td>${new Date(r.timestamp).toLocaleString()}</td><td>${r.location}</td><td>${escAdmin(r.region_label||r.region||"—")}</td><td><span class="badge badge-${String(r.risk_level).toLowerCase()}">${r.risk_level}</span></td><td>${r.risk_score}%</td><td>${(Number(r.ml_probability||0)*100).toFixed(1)}%</td><td>${r.geotechnical?.factor_of_safety??"—"}</td></tr>`).join("");
+ adminAlerts.innerHTML=alerts.slice(0,10).map(a=>`<div class="factor-pill"><span>${a.location}<br><small>${new Date(a.timestamp).toLocaleString()}</small></span><span class="badge badge-${String(a.risk_level).toLowerCase()}">${a.risk_level} · ${a.risk_score}%</span></div>`).join("")||'<div class="empty">No warnings.</div>';
+ loadDispatchLogs();
+}catch(e){adminApi.textContent="AUTH/API ERROR";adminAlerts.innerHTML=`<div class="empty">${e.message}</div>`;}}
+function escAdmin(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+function renderMonitorStatus(mon){
+ const box=document.getElementById("monitorStatus");
+ const s=mon.status||{};
+ const results=s.results||[];
+ const high=(s.high_or_critical)||[];
+ const dataUnavail=(s.data_unavailable)||[];
+ box.innerHTML=`
+ <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+  <span class="badge ${mon.enabled?'badge-moderate':'badge-low'}">${mon.enabled?'AUTOMATIC · EVERY '+(mon.interval_seconds/60)+' MIN':'PAUSED'}</span>
+  <span class="badge badge-low">Cooldown: ${(mon.dispatch_cooldown_seconds/60)} min</span>
+  <span class="badge badge-moderate">Locations: ${(mon.locations||[]).length}</span>
+  ${mon.last_run?`<span class="badge badge-low">Last: ${new Date(mon.last_run).toLocaleTimeString()}</span>`:''}
+ </div>
+ ${high.length?`<div style="margin-top:.5rem">${high.map(x=>`<span class="badge badge-critical" style="margin-right:.4rem">🔔 ${escAdmin(x.location)} · ${x.risk_level} ${x.risk_score}%</span>`).join("")}</div>`:''}
+ ${dataUnavail.length?`<p style="font-size:.78rem;color:var(--red);margin:.4rem 0 0">Live weather unavailable for: ${dataUnavail.map(x=>escAdmin(x.location)).join(", ")} — not auto-declared CRITICAL, auto-SOS suppressed.</p>`:''}
+ ${results.length?`
+  <div class="table-wrap" style="margin-top:.75rem"><table class="data-table"><thead><tr><th>Region</th><th>Location</th><th>Rain (24h)</th><th>Pore Pressure</th><th>Threshold</th><th>Risk</th><th>SOS</th><th>Data</th></tr></thead>
+  <tbody>${results.map(x=>`
+    <tr>
+      <td>${escAdmin(x.region||"—")}</td>
+      <td>${escAdmin(x.location)}</td>
+      <td>${x.rainfall!=null?Number(x.rainfall)+' mm':"—"}</td>
+      <td>${x.pore_pressure!=null?Number(x.pore_pressure).toFixed(3)+' kPa':"—"}</td>
+      <td>${x.threshold!=null?Number(x.threshold)+' kPa':"—"}</td>
+      <td><span class="badge badge-${String(x.risk_level||'low').toLowerCase()}">${escAdmin(x.risk_level||"—")} ${x.risk_score!=null?x.risk_score+'%':''}</span></td>
+      <td>${(x.risk_score||0)>=61?'<span class="badge badge-critical">AUTO</span>':(x.data_quality==='DATA_UNAVAILABLE'?'<span class="badge badge-low">SUPPRESSED</span>':'<span class="badge badge-low">Standby</span>')}</td>
+      <td>${escAdmin(x.data_quality||"—")} ${x.data_status?`(${escAdmin(x.data_status)})`:''}</td>
+    </tr>`).join("")}</tbody></table></div>`
+ :'<div><div class="empty">No monitoring cycle results yet. Click ▶ Run Now.</div></div>'}
+ <p style="color:var(--muted);font-size:.78rem;margin-top:.6rem">When any region reaches HIGH/CRITICAL, the backend automatically emails every VERIFIED resident in that region (with a cooldown to avoid spam). Data marked DATA_UNAVAILABLE never triggers auto-CRITICAL or auto-SOS.</p>`;
+}
+async function loadDispatchLogs(){
+ const logs=document.getElementById("dispatchLog");
+ try{const data=await API.get("/monitor/logs?limit=10");
+  logs.innerHTML=(data&&data.length?data.map(l=>`<div class="factor-pill"><span><strong>${escAdmin(l.location)}</strong> · ${escAdmin(l.kind||"AUTO_SOS")}<br><small>${new Date(l.timestamp).toLocaleString()}</small></span><span class="badge ${String(l.status).includes("SENT")?'badge-critical':'badge-low'}">${escAdmin(l.status)} · ${l.recipient_count} recv</span></div>`).join(""):'<div class="empty">No automatic dispatches yet.</div>');
+ }catch(e){logs.innerHTML=`<div class="empty">${escAdmin(e.message)}</div>`;}
+}
+runNowBtn.onclick=async()=>{runNowBtn.textContent="Running…";try{await API.post("/monitor/run-now",{},API.adminHeaders());await loadAdmin();}catch(e){monitorStatus.innerHTML=`<div class="empty">${escAdmin(e.message)}</div>`;}finally{runNowBtn.textContent="▶ Run Now";}};
+refreshAdmin.onclick=loadAdmin;
+setInterval(loadAdmin,30000);
+logoutAdmin.onclick=()=>{sessionStorage.removeItem("lg_admin_token");sessionStorage.removeItem("pending_sos");location.replace("admin-login.html");};
+async function deleteUser(email){
+ if(!confirm(`Remove registered user ${email}? This cannot be undone.`))return;
+ try{const r=await API.request(`/admin/registered-users/${encodeURIComponent(email)}?confirm=yes`,{method:"DELETE",headers:API.adminHeaders()});alert(r.message);loadAdmin();}catch(e){alert("Delete failed: "+e.message);}
+}
+try{const pending=sessionStorage.getItem("pending_sos");if(pending){const p=JSON.parse(pending);if(p&&p.location){dispatchLocation.value=p.location;dispatchMessage.value=escAdmin(`Landslide Guardian risk alert: ${p.risk_score}% (${p.risk_level}). ${p.recommendation||""}`);dispatchResult.innerHTML=`<span style="color:var(--yellow)">Pending HIGH/CRITICAL from Risk Assessment for ${escAdmin(p.location)} — confirmed by you below.</span>`;}}else{dispatchMessage.value="Emergency landslide warning from Landslide Guardian. Please move away from vulnerable slopes and follow official safety instructions.";}}catch(_){}
+dispatchAdmin.onclick=async()=>{try{const r=await API.post("/admin/dispatch-sos",{location:dispatchLocation.value,message:dispatchMessage.value},API.adminHeaders());dispatchResult.innerHTML=`<span style="color:var(--green)">Status: ${escAdmin(r.status)} · ${r.recipient_count} recipient(s) alerted.${r.logs&&r.logs.length?` (${r.logs.map(l=>l.name||l.email).join(", ")})`:""}${r.note?` · ${escAdmin(r.note)}`:""}</span>`;sessionStorage.removeItem("pending_sos");loadAdmin();}catch(e){dispatchResult.innerHTML=`<span style="color:var(--red)">${escAdmin(e.message)}</span>`;}};
+document.addEventListener("DOMContentLoaded",()=>{populateLocations();loadAdmin();});
+</script></body></html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Admin Login — Landslide Guardian</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">⛰️ Landslide Guardian</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+    </ul>
+  </nav>
+
+  <main class="login-shell">
+    <div class="login-card">
+      <span class="eyebrow">Restricted console</span>
+      <h1>Administrator Login</h1>
+      <p>Only the operations administrator can access registration counts, assessments and emergency dispatch.</p>
+
+      <form id="adminForm">
+        <label for="adminUser">Username
+          <input id="adminUser" class="form-control" required style="margin:.35rem 0 .8rem" autocomplete="username">
+        </label>
+        <label for="adminPass">Password
+          <input id="adminPass" class="form-control" type="password" required style="margin:.35rem 0 1rem" autocomplete="current-password">
+        </label>
+        <button type="submit" class="btn btn-primary" style="width:100%">Open Admin Console</button>
+      </form>
+
+      <div id="adminMsg" style="color:var(--red);font-size:.8rem;margin-top:.8rem"></div>
+    </div>
+  </main>
+
+  <footer></footer>
+
+  <script src="api.js"></script>
+  <script src="ui.js"></script>
+  <script>
+    document.getElementById("adminForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const adminMsg = document.getElementById("adminMsg");
+      const adminUser = document.getElementById("adminUser");
+      const adminPass = document.getElementById("adminPass");
+
+      adminMsg.textContent = "Authenticating…";
+      try {
+        const r = await API.post("/admin/login", {
+          username: adminUser.value,
+          password: adminPass.value,
+        });
+        sessionStorage.setItem("lg_admin_token", r.token);
+        location.replace("admin.html");
+      } catch (err) {
+        adminMsg.textContent = "Login failed. Check administrator credentials.";
+      }
+    };
+  </script>
+</body>
+</html>
