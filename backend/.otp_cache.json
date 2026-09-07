@@ -8,5 +8,15 @@
     "resends": 1,
     "verified": true,
     "verified_at": "2026-09-04T17:59:25.676311+00:00"
+  },
+  "basu.sharbari@gmail.com": {
+    "email": "basu.sharbari@gmail.com",
+    "hash": "200e87db636f42e48ac7becf9021ceb889c1628278cce6248df2a47943cbf07b",
+    "created_at": "2026-09-07T15:11:18.715282+00:00",
+    "expires_at": "2026-09-07T15:21:18.715282+00:00",
+    "attempts": 0,
+    "resends": 1,
+    "verified": true,
+    "verified_at": "2026-09-07T15:13:14.571165+00:00"
   }
 }
