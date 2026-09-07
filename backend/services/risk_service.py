@@ -158,12 +158,28 @@ async def calculate_risk_assessment(
     env.rainfall_72h = rainfall_72h
     env.pore_pressure_kpa = pore
 
+    # Map all live environmental, geotechnical and sensor parameters into features
+    # Antecedent rainfall index (7d estimation from 72h / 24h)
+    antecedent_7d = max(rainfall_72h * 1.5, rainfall * 2.2) if rainfall_72h else rainfall * 2.0
+    accel_val = 9.81
+    if sensor_data and hasattr(sensor_data, "accel_z") and sensor_data.accel_z is not None:
+        accel_val = float(sensor_data.accel_z)
+
     features = {
-        "rainfall_24h_mm": rainfall,
-        "rainfall_72h_mm": rainfall_72h,
+        "soil_moisture": soil,
         "soil_moisture_pct": soil,
+        "water_pressure": pore,
         "pore_pressure_kpa": pore,
+        "acceleration": accel_val,
+        "tilt_angle": tilt,
         "tilt_deg": tilt,
+        "temperature": float(getattr(env, "temperature", 24.0) or 24.0),
+        "humidity": float(getattr(env, "humidity", 70.0) or 70.0),
+        "rainfall": rainfall,
+        "rainfall_24h_mm": rainfall,
+        "antecedent_rainfall_7d": antecedent_7d,
+        "rainfall_72h_mm": rainfall_72h,
+        "slope_angle_deg": env.slope,
         "slope_deg": env.slope,
         "elevation_m": env.elevation,
         "ndvi": env.ndvi,
@@ -172,11 +188,15 @@ async def calculate_risk_assessment(
         "cohesion_kpa": terrain["cohesion_kpa"],
     }
 
-    # Existing ML model (unchanged). Software mode uses real available inputs;
-    # tilt stays 0.0 (NO fabricated tilt) and is labelled as hardware-only.
+    # Execute ML inference and geotechnical Factor of Safety
     ml_probability = predict_landslide_probability(features)
     fs = calculate_factor_of_safety(terrain, soil, pore)
     geo_score = max(0.0, min(100.0, 100.0 * (1.55 - fs) / 0.75))
+
+    logger.info(
+        "Landslide Risk Pipeline: loc=%s, rain_24h=%.1fmm, soil=%.1f%%, pore=%.2fkPa, slope=%.1f deg -> ML_prob=%.2f%%, FS=%.2f",
+        location_name, rainfall, soil, pore, env.slope, ml_probability * 100.0, fs
+    )
 
     rain_stress = min(1.0, rainfall / max(thresholds["rainfall_24h_high_mm"], 1))
     soil_stress = min(1.0, soil / max(thresholds["soil_moisture_high_pct"], 1))
@@ -310,6 +330,7 @@ async def calculate_risk_assessment(
         risk_score=score, risk_level=level,
         risk_probability=round(score/100, 4),
         ml_probability=round(ml_probability, 4),
+        factor_of_safety=fs,
         geotechnical_score=round(geo_score, 2),
         factors=factors,
         recommendation=recommendation,

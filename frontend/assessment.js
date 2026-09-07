@@ -142,8 +142,9 @@ function displayLiveNow(res) {
   const badge = document.getElementById("resBadge");
   badge.textContent = `${res.risk_level} RISK`;
   badge.className = `badge badge-${String(res.risk_level).toLowerCase()}`;
-  document.getElementById("mlProb").textContent = `${((res.ml_probability || 0) * 100).toFixed(1)}%`;
-  document.getElementById("fsVal").textContent = res.factor_of_safety != null ? Number(res.factor_of_safety).toFixed(2) : "—";
+  document.getElementById("mlProb").textContent = `${((res.ml_probability != null ? res.ml_probability : (full.ml_probability || 0)) * 100).toFixed(1)}%`;
+  const fsRaw = res.factor_of_safety ?? (res.geotechnical || {}).factor_of_safety ?? (full.geotechnical || {}).factor_of_safety ?? (full.calculation_breakdown?.factor_of_safety?.calculated_fs);
+  document.getElementById("fsVal").textContent = (fsRaw != null && !isNaN(fsRaw)) ? Number(fsRaw).toFixed(2) : "—";
   document.getElementById("resRecommendation").textContent = full.recommendation || res.landslide_assessment || "—";
 
   const dq = res.data_quality || full.data_quality;
@@ -185,8 +186,9 @@ function displayAssessment(res) {
   const badge = document.getElementById("resBadge");
   badge.textContent = `${res.risk_level} RISK`;
   badge.className = `badge badge-${String(res.risk_level).toLowerCase()}`;
-  document.getElementById("mlProb").textContent = `${((res.ml_probability || 0) * 100).toFixed(1)}%`;
-  document.getElementById("fsVal").textContent = (res.geotechnical || {}).factor_of_safety != null ? Number((res.geotechnical || {}).factor_of_safety).toFixed(2) : (res.factor_of_safety != null ? Number(res.factor_of_safety).toFixed(2) : "—");
+  document.getElementById("mlProb").textContent = `${((res.ml_probability != null ? res.ml_probability : 0) * 100).toFixed(1)}%`;
+  const fsRaw2 = res.factor_of_safety ?? (res.geotechnical || {}).factor_of_safety ?? (res.calculation_breakdown?.factor_of_safety?.calculated_fs);
+  document.getElementById("fsVal").textContent = (fsRaw2 != null && !isNaN(fsRaw2)) ? Number(fsRaw2).toFixed(2) : "—";
   document.getElementById("resRecommendation").textContent = res.recommendation || "—";
 
   const dq = res.data_quality || "LIVE";

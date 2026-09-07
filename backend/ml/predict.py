@@ -108,6 +108,8 @@ def predict_landslide_probability(*args, **kwargs) -> float:
     else:
         prob = float(model.predict(df_scaled)[0])
 
+    # Safeguard bounds: genuine probability never collapses to negative or NaN
+    prob = max(0.001, min(0.999, prob))
     return round(prob, 4)
 
 def predict_landslide_risk(sensor_data: dict) -> dict:

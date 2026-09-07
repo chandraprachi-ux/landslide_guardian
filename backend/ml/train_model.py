@@ -63,8 +63,13 @@ def generate_50k_dataset(total_samples=55000, random_seed=42):
         temperature = np.clip(np.random.normal(23.0 - (prof["lat"] - 24.0) * 1.5, 3.8, n), 10.0, 36.0)
         humidity = np.clip(soil_moisture * 0.85 + np.random.normal(25.0, 6.0, n), 40.0, 100.0)
 
-        tilt = np.random.exponential(scale=0.06, size=n)
-        accel = 9.81 + np.random.normal(0.0, 0.03, n)
+        # Sensor readings: baseline ambient tilt and acceleration
+        # In real-world geotechnical monitoring, tilt is 0.0° - 0.2° during pre-failure
+        # saturation, and only elevates when physical displacement occurs.
+        # To avoid target leakage and allow live software inference when hardware tilt is 0,
+        # tilt and acceleration must NOT leak the trigger label 100% of the time.
+        tilt = np.random.exponential(scale=0.04, size=n)
+        accel = 9.81 + np.random.normal(0.0, 0.02, n)
 
         # Mohr-Coulomb Factor of Safety physics:
         z = prof["soil_depth"]
@@ -82,14 +87,19 @@ def generate_50k_dataset(total_samples=55000, random_seed=42):
         resisting_force = c_prime + effective_normal * np.tan(phi_rad)
         fos = resisting_force / tau_shear
 
-        prob_trigger = 1.0 / (1.0 + np.exp(3.6 * (fos - 1.05)))
-        prob_trigger = np.where((rainfall_24h > 120.0) & (slopes > 30.0), np.maximum(prob_trigger, 0.78), prob_trigger)
+        # Trigger probability directly derived from Factor of Safety and hydrometeorological stress
+        prob_trigger = 1.0 / (1.0 + np.exp(3.8 * (fos - 1.08)))
+        prob_trigger = np.where((rainfall_24h > 100.0) & (slopes > 28.0), np.maximum(prob_trigger, 0.75), prob_trigger)
+        prob_trigger = np.where((water_pressure > 18.0) & (slopes > 25.0), np.maximum(prob_trigger, 0.70), prob_trigger)
+        prob_trigger = np.clip(prob_trigger, 0.01, 0.98)
 
         triggered = (prob_trigger > np.random.uniform(0.20, 0.80, size=n)).astype(int)
 
-        # Micro-tremor / tilt displacement during failure
-        tilt = np.where(triggered == 1, tilt + np.random.uniform(1.2, 8.5, n), tilt)
-        accel = np.where(triggered == 1, accel + np.random.uniform(0.4, 2.5, n), accel)
+        # In only 30% of active failure samples, surface displacement tilt or tremors are already visible.
+        # The remaining 70% of triggered events occur at baseline/incipient tilt (0.0° - 0.3°).
+        has_surface_movement = (triggered == 1) & (np.random.rand(n) < 0.30)
+        tilt = np.where(has_surface_movement, tilt + np.random.uniform(1.0, 6.0, n), tilt)
+        accel = np.where(has_surface_movement, accel + np.random.uniform(0.3, 1.8, n), accel)
 
         for i in range(n):
             records.append({

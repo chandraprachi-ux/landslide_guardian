@@ -63,6 +63,7 @@ class RiskResult(BaseModel):
     risk_level: str
     risk_probability: float
     ml_probability: float
+    factor_of_safety: Optional[float] = None
     geotechnical_score: float
     factors: Dict[str, str]
     recommendation: str
