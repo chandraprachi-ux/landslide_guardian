@@ -36,7 +36,11 @@ document.addEventListener("DOMContentLoaded", () => {
       runLiveNow();
     } else {
       document.getElementById("inputName").value = qLoc;
+      runLiveNow();
     }
+  } else {
+    // Auto-run initial live assessment for the default selected corridor (Gangtok)
+    runLiveNow();
   }
 });
 
