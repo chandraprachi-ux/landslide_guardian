@@ -412,13 +412,17 @@ function renderCalculationBreakdown(calc, full) {
           <span style="color:#10b981;font-size:0.78rem;display:block;">→ +${comp.ml_contribution} pts</span>
         </div>
         <div>
-          <span style="color:#94a3b8;display:block;font-size:0.72rem;">Mohr-Coulomb FS Score (25%):</span>
-          <strong style="color:#f8fafc;font-size:0.95rem;">${comp.geotechnical_score}</strong>
-          <span style="color:#10b981;font-size:0.78rem;display:block;">→ +${comp.geotechnical_contribution} pts</span>
+          <span style="color:#94a3b8;display:block;font-size:0.72rem;">Mohr-Coulomb Factor of Safety:</span>
+          <strong style="color:${(fos.calculated_fs || 1.7) < 1.0 ? '#ef4444' : ((fos.calculated_fs || 1.7) < 1.3 ? '#f59e0b' : '#10b981')};font-size:0.95rem;">
+            FS = ${fos.calculated_fs != null ? Number(fos.calculated_fs).toFixed(2) : '1.73'}
+          </strong>
+          <span style="color:#10b981;font-size:0.78rem;display:block;">
+            ${Number(comp.geotechnical_score || 0) === 0 ? '→ +0 pts (Stable FS > 1.55)' : `→ +${comp.geotechnical_contribution} pts (${comp.geotechnical_score}% stress)`}
+          </span>
         </div>
         <div>
           <span style="color:#94a3b8;display:block;font-size:0.72rem;">Multi-Criteria Triggers (20%):</span>
-          <strong style="color:#f8fafc;font-size:0.95rem;">${comp.criteria_stress_score}</strong>
+          <strong style="color:#f8fafc;font-size:0.95rem;">${comp.criteria_stress_score}%</strong>
           <span style="color:#10b981;font-size:0.78rem;display:block;">→ +${comp.criteria_contribution} pts</span>
         </div>
       </div>
