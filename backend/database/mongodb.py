@@ -42,7 +42,7 @@ class MemoryCollection:
 
     def insert_one(self, doc):
         self.docs.append(dict(doc))
-        return type("InsertResult", (), {"inserted_id": None})()
+        return type("InsertResult", (), {"inserted_id": None, "acknowledged": True})()
 
     def find_one(self, query=None, sort=None):
         query = query or {}
@@ -65,18 +65,20 @@ class MemoryCollection:
         for d in self.docs:
             if all(d.get(k) == v for k, v in query.items()):
                 d.update(update.get("$set", {}))
-                return
+                return type("UpdateResult", (), {"acknowledged": True, "matched_count": 1, "modified_count": 1, "upserted_id": None})()
         if upsert:
             doc = dict(query)
             doc.update(update.get("$set", {}))
             self.docs.append(doc)
+            return type("UpdateResult", (), {"acknowledged": True, "matched_count": 0, "modified_count": 0, "upserted_id": None})()
+        return type("UpdateResult", (), {"acknowledged": True, "matched_count": 0, "modified_count": 0, "upserted_id": None})()
 
     def delete_one(self, query):
         for i, d in enumerate(self.docs):
             if all(d.get(k) == v for k, v in query.items()):
                 del self.docs[i]
-                return type("DeleteResult", (), {"deleted_count": 1})()
-        return type("DeleteResult", (), {"deleted_count": 0})()
+                return type("DeleteResult", (), {"deleted_count": 1, "acknowledged": True})()
+        return type("DeleteResult", (), {"deleted_count": 0, "acknowledged": True})()
 
     def count_documents(self, query=None):
         query = query or {}
@@ -109,18 +111,17 @@ class DatabaseManager:
             return
 
         try:
-            self.client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+            self.client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2500)
             self.client.admin.command("ping")
             self.db = self.client["landslide_guardian"]
             self.is_connected = True
             self.mode = "mongodb_atlas"
             logger.info("MongoDB Atlas connected successfully.")
+            self._bind_collections()
+            self._create_indexes()
         except Exception as exc:
             logger.warning("MongoDB connection failed; using in-memory storage: %s", exc)
             self._use_memory()
-
-        self._bind_collections()
-        self._create_indexes()
 
     def _use_memory(self):
         self.client = None

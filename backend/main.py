@@ -21,13 +21,21 @@ _monitor_task = None
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     global _monitor_task
-    from .services.monitor import background_monitor_loop
-    _monitor_task = asyncio.create_task(background_monitor_loop())
-    logging.getLogger(__name__).info("Automatic monitoring loop scheduled.")
+    import os
+    if not os.getenv("VERCEL"):
+        try:
+            from .services.monitor import background_monitor_loop
+            _monitor_task = asyncio.create_task(background_monitor_loop())
+            logging.getLogger(__name__).info("Automatic monitoring loop scheduled.")
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Could not schedule automatic monitoring loop: %s", exc)
     yield
     if _monitor_task:
-        _monitor_task.cancel()
-        logging.getLogger(__name__).info("Automatic monitoring loop stopped.")
+        try:
+            _monitor_task.cancel()
+            logging.getLogger(__name__).info("Automatic monitoring loop stopped.")
+        except Exception:
+            pass
 
 
 app = FastAPI(
