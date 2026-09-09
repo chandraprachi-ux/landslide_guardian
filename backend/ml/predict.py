@@ -1,7 +1,6 @@
 import os
 import pickle
 import numpy as np
-import pandas as pd
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
 
@@ -94,19 +93,21 @@ def predict_landslide_probability(*args, **kwargs) -> float:
         return 0.85 if (sm > 80.0 or rf > 100.0 or wp > 35.0) else 0.15
 
     # Extract ordered features mapped to fitted columns
-    row = {col: _resolve_feature(data, col) for col in feature_names}
-    df_features = pd.DataFrame([row], columns=feature_names)
+    row_vals = [[_resolve_feature(data, col) for col in feature_names]]
+    arr_features = np.array(row_vals)
 
     if scaler is not None:
-        scaled_array = scaler.transform(df_features)
-        df_scaled = pd.DataFrame(scaled_array, columns=feature_names)
+        try:
+            arr_scaled = scaler.transform(arr_features)
+        except Exception:
+            arr_scaled = arr_features
     else:
-        df_scaled = df_features
+        arr_scaled = arr_features
 
     if hasattr(model, "predict_proba"):
-        prob = float(model.predict_proba(df_scaled)[0][1])
+        prob = float(model.predict_proba(arr_scaled)[0][1])
     else:
-        prob = float(model.predict(df_scaled)[0])
+        prob = float(model.predict(arr_scaled)[0])
 
     # Safeguard bounds: genuine probability never collapses to negative or NaN
     prob = max(0.001, min(0.999, prob))
