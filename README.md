@@ -210,3 +210,5 @@ Frontend live views (auto-refreshing):
 - **Admin console** — auto-refreshes every 30s and shows the regional monitoring table (Region | Rainfall | Pore Pressure | Threshold | Risk | SOS), the automatic-monitoring state, dispatch log, a **▶ Run Now** button, registered-user management (verify status + remove), and the admin-only manual emergency dispatch.
 - **Alerts & SOS** — register for alerts, **verify your email with the OTP**, and see the active-warnings feed (refreshes every 20s). Manual dispatch is **admin-only** (via the admin console).
 
+#   l a n d s l i d e _ g u a r d i a n  
+ 
